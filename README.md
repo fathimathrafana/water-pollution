@@ -1,11 +1,11 @@
- WATER POLLUTION DETECTION PROJECT 💧🔬
+ **WATER POLLUTION DETECTION PROJECT 💧🔬**
 
- OVERVIEW
+ **OVERVIEW**
 Water pollution is a growing global challenge, affecting health, ecosystems, and access to clean drinking water.  
 This project uses Deep Learning to classify water images into two categories: **Clean Water** and **Dirty Water**.  
 The goal is to support early detection of contaminated water sources, enable quick response, and promote safer water usage. 
 
-DATASET
+**DATASET**
 We use the Clean/Dirty Water Dataset from Kaggle:  
 [🔗 Kaggle Dataset](https://www.kaggle.com/datasets/elvinagammed/clean-dirty-water-dataset)
 
@@ -13,7 +13,7 @@ We use the Clean/Dirty Water Dataset from Kaggle:
 - Classes: Clean-samples, Dirty-samples  
 - Dataset is organized in folders by class and contains a Train/Test split.
 
-TECHNOLOGIES USED
+**TECHNOLOGIES USED**
 - **Python**
 - **TensorFlow / Keras**
 - **NumPy, Pandas, Matplotlib**
