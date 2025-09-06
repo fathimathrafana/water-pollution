@@ -6,8 +6,7 @@ This project uses Deep Learning to classify water images into two categories: **
 The goal is to support early detection of contaminated water sources, enable quick response, and promote safer water usage. 
 
 **DATASET**
-We use the Clean/Dirty Water Dataset from Kaggle:  
-[🔗 Kaggle Dataset](https://www.kaggle.com/datasets/elvinagammed/clean-dirty-water-dataset)
+https://github.com/pooj180304/Water-quality-detection-using-deep-cnn-image-classifier/blob/main/water%20images.zip
 
 - Total Classes:2  
 - Classes: Clean-samples, Dirty-samples  
