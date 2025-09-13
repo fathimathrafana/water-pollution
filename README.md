@@ -89,3 +89,8 @@ Developed by Fathimath Rafana CR. Contributions are welcome! 🚀
 
 🌍 Live Demo: https://water-pollution-13.onrender.com/
 
+
+Here are some previews of the project:
+
+![Screenshot 1](assets/screenshot1.png)
+![Screenshot 2](assets/screenshot2.png)
