@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, jsonify
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
 import numpy as np
 import os
-from PIL import Image
-import tensorflow as tf
 
 # -----------------------
 # Flask App
@@ -10,18 +10,13 @@ import tensorflow as tf
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
 # -----------------------
-# Load TFLite Model
+# Load Model
 # -----------------------
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.tflite")
-interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
-interpreter.allocate_tensors()
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.h5")
+model = load_model(MODEL_PATH)
 
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-
-# Define class names (order may need adjustment)
+# Define class names
 CLASS_NAMES = ["Clean Water", "Polluted Water"]
-
 
 # -----------------------
 # Routes
@@ -43,56 +38,34 @@ def predict():
     if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
-    # Save uploaded file temporarily
-    os.makedirs("uploads", exist_ok=True)
+    # Save uploaded file
     temp_path = os.path.join("uploads", file.filename)
+    os.makedirs("uploads", exist_ok=True)
     file.save(temp_path)
 
-    try:
-        # Preprocess image
-        img = Image.open(temp_path).convert("RGB")
-        img = img.resize((224, 224))  # adjust if your model expects other size
-        img_array = np.array(img, dtype=np.float32)
-        img_array = np.expand_dims(img_array, axis=0)
+    # Preprocess image (⚠️ do NOT divide by 255 because model already has Rescaling layer)
+    img = image.load_img(temp_path, target_size=(224, 224))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
 
-        # Normalize if model expects float32 input
-        if input_details[0]['dtype'] == np.float32:
-            img_array = img_array / 255.0
+    # Get predictions
+    preds = model.predict(img_array)
+    class_idx = int(np.argmax(preds))
+    confidence = float(np.max(preds))
 
-        # Run inference
-        interpreter.set_tensor(input_details[0]['index'], img_array)
-        interpreter.invoke()
-        preds = interpreter.get_tensor(output_details[0]['index'])
+    # Debug log
+    print("Raw predictions:", preds)
 
-        # Debug: raw model output
-        print("DEBUG OUTPUT:", preds, "Shape:", preds.shape)
+    # Delete file after prediction
+    os.remove(temp_path)
 
-        # Handle sigmoid (binary) vs softmax (multi-class)
-        if preds.shape[-1] == 1:
-            prob = float(preds[0][0])
-            class_idx = 1 if prob > 0.5 else 0
-            confidence = prob if class_idx == 1 else 1 - prob
-        else:
-            class_idx = int(np.argmax(preds))
-            confidence = float(preds[0][class_idx])
-
-        return jsonify({
-            "predicted_class": CLASS_NAMES[class_idx],
-            "confidence": round(confidence, 4)
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-    finally:
-        # Clean up uploaded file
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+    return jsonify({
+        "predicted_class": CLASS_NAMES[class_idx],
+        "confidence": round(confidence, 4)
+    })
 
 # -----------------------
 # Run Server
 # -----------------------
 if __name__ == "__main__":
     app.run(debug=True)
-
-
