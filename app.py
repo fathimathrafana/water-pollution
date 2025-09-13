@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, jsonify
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
 import numpy as np
 import os
-from PIL import Image
-import tflite_runtime.interpreter as tflite   # ✅ use lightweight TFLite runtime
 
 # -----------------------
 # Flask App
@@ -10,14 +10,10 @@ import tflite_runtime.interpreter as tflite   # ✅ use lightweight TFLite runti
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
 # -----------------------
-# Load TFLite Model
+# Load Model
 # -----------------------
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.tflite")
-interpreter = tflite.Interpreter(model_path=MODEL_PATH)
-interpreter.allocate_tensors()
-
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.h5")
+model = load_model(MODEL_PATH)
 
 # Define class names
 CLASS_NAMES = ["Clean Water", "Polluted Water"]
@@ -47,17 +43,13 @@ def predict():
     os.makedirs("uploads", exist_ok=True)
     file.save(temp_path)
 
-    # Preprocess image (⚠️ same input size you used in training, here assumed 224x224)
-    img = Image.open(temp_path).convert("RGB")
-    img = img.resize((224, 224))
-    img_array = np.array(img, dtype=np.float32)
+    # Preprocess image (⚠️ do NOT divide by 255 because model already has Rescaling layer)
+    img = image.load_img(temp_path, target_size=(224, 224))
+    img_array = image.img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)
 
-    # Run inference
-    interpreter.set_tensor(input_details[0]['index'], img_array)
-    interpreter.invoke()
-    preds = interpreter.get_tensor(output_details[0]['index'])
-
+    # Get predictions
+    preds = model.predict(img_array)
     class_idx = int(np.argmax(preds))
     confidence = float(np.max(preds))
 
@@ -77,5 +69,6 @@ def predict():
 # -----------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
