@@ -1,5 +1,8 @@
 flask
 tensorflow
+keras
+gunicorn
 numpy
 pillow
-gunicorn
+
+
