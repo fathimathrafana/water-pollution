@@ -18,3 +18,74 @@ https://github.com/pooj180304/Water-quality-detection-using-deep-cnn-image-class
 - **NumPy, Pandas, Matplotlib**
 - **OpenCV** (for image preprocessing)
 - **Google Colab** (for model training)
+
+- 
+**📌 Features**
+  
+Upload an image of water and get a predicted category (Clean / Polluted).
+Displays prediction confidence.
+Built with Flask, TensorFlow Lite, and NumPy.
+Frontend built using HTML, CSS, and JavaScript.
+Deployed on Render (free tier)
+
+**⚙️ Tech Stack**
+
+Backend: Flask (Python)
+Model: TensorFlow Lite (CNN model)
+Frontend: HTML, CSS, JavaScript
+Deployment: Render (Python Web Service)
+
+**🚀 Installation & Setup**
+
+**1.Clone the repository:**
+
+git clone https://github.com/yourusername/water-pollution-detection.git
+cd water-pollution-detection
+
+
+**2.Create and activate a virtual environment:**
+
+python3 -m venv venv
+source venv/bin/activate   # For Linux/Mac
+venv\Scripts\activate      # For Windows
+
+
+**Install dependencies:**
+pip install -r requirements.txt
+
+
+**Run the Flask app:**
+python app.py
+
+
+**Open in browser:**
+http://127.0.0.1:5000
+
+**🌐 Deployment (Render)**
+
+1.Push your project to GitHub.
+
+2.On Render:
+
+  -Create a new Web Service.
+
+  -Connect your GitHub repo.
+
+  -Build command:
+
+     pip install -r requirements.txt
+  
+  -Start command:
+
+     gunicorn app:app 
+   
+ 📜 License
+
+     This project is released under the MIT License.
+
+👩‍💻 Author
+
+Developed by Fathimath Rafana CR. Contributions are welcome! 🚀
+
+🌍 Live Demo: https://water-pollution-13.onrender.com/
+
