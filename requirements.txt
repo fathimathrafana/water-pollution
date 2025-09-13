@@ -1,9 +1,10 @@
-flask
-tensorflow-cpu
-keras
+Flask
 gunicorn
 numpy
-pillow
+Pillow
+tensorflow-cpu==2.15.0
+
+
 
 
 
