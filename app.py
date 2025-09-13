@@ -38,34 +38,50 @@ def predict():
     if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
-    # Save uploaded file
+    # Save uploaded file temporarily
     temp_path = os.path.join("uploads", file.filename)
     os.makedirs("uploads", exist_ok=True)
     file.save(temp_path)
 
-    # Preprocess image (⚠️ do NOT divide by 255 because model already has Rescaling layer)
-    img = image.load_img(temp_path, target_size=(224, 224))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
+    try:
+        # Preprocess image
+        img = image.load_img(temp_path, target_size=(224, 224))
+        img_array = image.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0)
 
-    # Get predictions
-    preds = model.predict(img_array)
-    class_idx = int(np.argmax(preds))
-    confidence = float(np.max(preds))
+        # Debug logs
+        print("DEBUG: Image shape:", img_array.shape)
+        print("DEBUG: Min pixel:", np.min(img_array), "Max pixel:", np.max(img_array))
 
-    # Debug log
-    print("Raw predictions:", preds)
+        # Predict
+        preds = model.predict(img_array)
+        class_idx = int(np.argmax(preds))
+        confidence = float(np.max(preds))
 
-    # Delete file after prediction
-    os.remove(temp_path)
+        # Debug logs
+        print("DEBUG: Raw predictions:", preds)
+        print("DEBUG: Predicted class index:", class_idx)
+        print("DEBUG: Confidence:", confidence)
 
-    return jsonify({
-        "predicted_class": CLASS_NAMES[class_idx],
-        "confidence": round(confidence, 4)
-    })
+        result = {
+            "predicted_class": CLASS_NAMES[class_idx],
+            "confidence": round(confidence, 4)
+        }
+
+    except Exception as e:
+        print("ERROR during prediction:", str(e))
+        result = {"error": str(e)}
+
+    finally:
+        # Always remove the file to avoid filling storage
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+    return jsonify(result)
 
 # -----------------------
 # Run Server
 # -----------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Set host to 0.0.0.0 so Render can access it
+    app.run(host="0.0.0.0", port=5000, debug=True)
