@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, jsonify
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
 import numpy as np
+import tensorflow as tf
+from PIL import Image
+import io
 import os
 
 # -----------------------
@@ -10,13 +11,28 @@ import os
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
 # -----------------------
-# Load Model
+# Load TFLite Model
 # -----------------------
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.h5")
-model = load_model(MODEL_PATH)
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.tflite")
+interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
+interpreter.allocate_tensors()
+
+# Get input/output details
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
 # Define class names
 CLASS_NAMES = ["Clean Water", "Polluted Water"]
+
+# -----------------------
+# Helper: preprocess image
+# -----------------------
+def prepare_image(image_bytes):
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    img = img.resize((224, 224))   # match your training size
+    img_array = np.array(img) / 255.0
+    img_array = np.expand_dims(img_array, axis=0).astype(np.float32)
+    return img_array
 
 # -----------------------
 # Routes
@@ -38,30 +54,16 @@ def predict():
     if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
-    # Save uploaded file temporarily
-    temp_path = os.path.join("uploads", file.filename)
-    os.makedirs("uploads", exist_ok=True)
-    file.save(temp_path)
-
     try:
-        # Preprocess image
-        img = image.load_img(temp_path, target_size=(224, 224))
-        img_array = image.img_to_array(img)
-        img_array = np.expand_dims(img_array, axis=0)
+        img_array = prepare_image(file.read())
 
-        # Debug logs
-        print("DEBUG: Image shape:", img_array.shape)
-        print("DEBUG: Min pixel:", np.min(img_array), "Max pixel:", np.max(img_array))
+        # Run inference
+        interpreter.set_tensor(input_details[0]['index'], img_array)
+        interpreter.invoke()
+        preds = interpreter.get_tensor(output_details[0]['index'])
 
-        # Predict
-        preds = model.predict(img_array)
         class_idx = int(np.argmax(preds))
         confidence = float(np.max(preds))
-
-        # Debug logs
-        print("DEBUG: Raw predictions:", preds)
-        print("DEBUG: Predicted class index:", class_idx)
-        print("DEBUG: Confidence:", confidence)
 
         result = {
             "predicted_class": CLASS_NAMES[class_idx],
@@ -72,16 +74,12 @@ def predict():
         print("ERROR during prediction:", str(e))
         result = {"error": str(e)}
 
-    finally:
-        # Always remove the file to avoid filling storage
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-
     return jsonify(result)
 
 # -----------------------
 # Run Server
 # -----------------------
 if __name__ == "__main__":
-    # Set host to 0.0.0.0 so Render can access it
     app.run(host="0.0.0.0", port=5000, debug=True)
+
+
