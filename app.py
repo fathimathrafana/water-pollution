@@ -1,78 +1,98 @@
-import os
-import numpy as np
 from flask import Flask, render_template, request, jsonify
+import numpy as np
+import os
 from PIL import Image
 import tensorflow as tf
 
-app = Flask(__name__)
+# -----------------------
+# Flask App
+# -----------------------
+app = Flask(__name__, template_folder="templates", static_folder="static")
 
-# Load TFLite model
-interpreter = tf.lite.Interpreter(model_path="model.tflite")
+# -----------------------
+# Load TFLite Model
+# -----------------------
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.tflite")
+interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
 interpreter.allocate_tensors()
 
-# Get input/output details
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
-# Define labels
+# Define class names (order may need adjustment)
 CLASS_NAMES = ["Clean Water", "Polluted Water"]
 
-@app.route('/')
-def index():
-    return render_template('index.html')
 
-@app.route('/upload')
-def upload():
-    return render_template('upload.html')
+# -----------------------
+# Routes
+# -----------------------
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-@app.route('/predict', methods=['POST'])
+@app.route("/upload")
+def upload_page():
+    return render_template("upload.html")
+
+@app.route("/predict", methods=["POST"])
 def predict():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
 
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'Empty filename'}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+
+    # Save uploaded file temporarily
+    os.makedirs("uploads", exist_ok=True)
+    temp_path = os.path.join("uploads", file.filename)
+    file.save(temp_path)
 
     try:
-        # Save temporarily
-        filepath = os.path.join("uploads", file.filename)
-        os.makedirs("uploads", exist_ok=True)
-        file.save(filepath)
-
         # Preprocess image
-        img = Image.open(filepath).convert("RGB")
-        img = img.resize((224, 224))   # make sure this matches your training size
-        img_array = np.array(img, dtype=np.float32) / 255.0
+        img = Image.open(temp_path).convert("RGB")
+        img = img.resize((224, 224))  # adjust if your model expects other size
+        img_array = np.array(img, dtype=np.float32)
         img_array = np.expand_dims(img_array, axis=0)
+
+        # Normalize if model expects float32 input
+        if input_details[0]['dtype'] == np.float32:
+            img_array = img_array / 255.0
 
         # Run inference
         interpreter.set_tensor(input_details[0]['index'], img_array)
         interpreter.invoke()
-        prediction = interpreter.get_tensor(output_details[0]['index'])
+        preds = interpreter.get_tensor(output_details[0]['index'])
 
-        # Handle binary (1 value) vs softmax (2 values)
-        if prediction.shape[-1] == 1:
-            prob = float(prediction[0][0])
-            predicted_class = "Polluted Water" if prob >= 0.5 else "Clean Water"
-            confidence = prob if predicted_class == "Polluted Water" else 1 - prob
+        # Debug: raw model output
+        print("DEBUG OUTPUT:", preds, "Shape:", preds.shape)
+
+        # Handle sigmoid (binary) vs softmax (multi-class)
+        if preds.shape[-1] == 1:
+            prob = float(preds[0][0])
+            class_idx = 1 if prob > 0.5 else 0
+            confidence = prob if class_idx == 1 else 1 - prob
         else:
-            probs = prediction[0]
-            class_idx = int(np.argmax(probs))
-            predicted_class = CLASS_NAMES[class_idx]
-            confidence = float(probs[class_idx])
-
-        # Clean up
-        os.remove(filepath)
+            class_idx = int(np.argmax(preds))
+            confidence = float(preds[0][class_idx])
 
         return jsonify({
-            'class': predicted_class,
-            'confidence': f"{confidence * 100:.2f}%"
+            "predicted_class": CLASS_NAMES[class_idx],
+            "confidence": round(confidence, 4)
         })
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    finally:
+        # Clean up uploaded file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+# -----------------------
+# Run Server
+# -----------------------
+if __name__ == "__main__":
+    app.run(debug=True)
+
 
