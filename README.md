@@ -91,11 +91,5 @@ Developed by Fathimath Rafana CR. Contributions are welcome! 🚀
 
 
 
-<p align="center">
-  <img src="assets/screenshot1.png" alt="App Screenshot 1" width="800"/>
-</p>
 
-<p align="center">
-  <img src="assets/screenshot2.png" alt="App Screenshot 2" width="800"/>
-</p>
 
